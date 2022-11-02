@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+const (
+	IPv6           = "-6"
+	SuppressErrors = "-!"
+)
+
 type Error struct {
 	exec.ExitError
 	cmd exec.Cmd
@@ -19,7 +24,7 @@ func (e *Error) Error() string {
 }
 
 type Ipset struct {
-	path string
+	path string // The path to the ipset executable
 }
 
 func New() (*Ipset, error) {
@@ -32,8 +37,9 @@ func New() (*Ipset, error) {
 	}, nil
 }
 
-func (ips *Ipset) Create(setname, typename string) error {
-	return ips.run("create", setname, typename)
+func (ips *Ipset) Create(setname, typename string, opts ...string) error {
+	args := append([]string{"create", setname, typename}, opts...)
+	return ips.run(args...)
 }
 
 func (ips *Ipset) Destroy(setname string) error {
@@ -53,12 +59,27 @@ func (ips *Ipset) SetExists(setname string) (bool, error) {
 	}
 }
 
+func (ips *Ipset) Add(setname, addr string, opts ...string) error {
+	args := append([]string{"add", setname, addr}, opts...)
+	return ips.run(args...)
+}
+
+func (ips *Ipset) Del(setname, addr string, opts ...string) error {
+	args := append([]string{"del", setname, addr}, opts...)
+	return ips.run(args...)
+}
+
+func (ips *Ipset) Flush(setname string) error {
+	return ips.run("flush", setname)
+}
+
 func (ips *Ipset) run(args ...string) error {
 	return ips.runWithOutput(args, nil)
 }
 
 func (ips *Ipset) runWithOutput(args []string, stdout io.Writer) error {
 	args = append([]string{ips.path}, args...)
+
 	var stderr bytes.Buffer
 	cmd := exec.Cmd{
 		Path:   ips.path,
